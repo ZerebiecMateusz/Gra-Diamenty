@@ -1,10 +1,10 @@
 import { Common, HIDDEN_SCREEN, VISIBLE_SCREEN } from './Common.esm.js';
 import { levelSelect } from './LevelSelect.esm.js';
-// import { CANVAS_WIDTH, CANVAS_HEIGHT } from './Canvas.esm.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from './Canvas.esm.js';
 // import { settings } from './Settings.esm.js';
 
 // const MINI_SETTINGS_BUTTON_ID = 'js-mini-settings-button';
-const MINI_SETTINGS_LAYER_ID = 'js-mini-settings-layer';
+// const MINI_SETTINGS_LAYER_ID = 'js-mini-settings-layer';
 const START_SCREEN_GAME_BUTTON_ID = 'js-start-game';
 const START_SCREEN_ID = 'js-start-screen';
 const START_SCREEN_SETTINGS_BUTTON_ID = 'js-settings-button';
@@ -32,7 +32,7 @@ class MainMenu extends Common {
 	}
 
 	showLevelScreen() {
-		levelSelect.createButtons();
+		// levelSelect.createButtons();
 		this.changeVisibilityScreen(this.element, HIDDEN_SCREEN);
 		this.changeVisibilityScreen(levelSelect.element, VISIBLE_SCREEN);
 	}
@@ -43,7 +43,7 @@ class MainMenu extends Common {
 
 	resizeGameWindow() {
 		const { innerWidth: width, innerHeight: height } = window;
-		const scale = Math.min(width / 640, height / 480);
+		const scale = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
 
 		document.documentElement.style.setProperty(SCALE_PROPERTY, scale);
 	}
