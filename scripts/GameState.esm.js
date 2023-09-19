@@ -19,7 +19,7 @@ export class GameState {
         this.setIsSwaping = value => _isSwaping = value;
         this.getIsMoving = () => _isMoving;
         this.setIsMoving = value => _isMoving = value;
-        this.isPlayerinner = () => _playerScores >= this._pointsToWin;
+        this.isPlayerWinner = () => _playerScores >= this._pointsToWin;
         this.getGameBoard = () => _gameBoard;
     }
 

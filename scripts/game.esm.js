@@ -1,15 +1,19 @@
 import { canvas } from "./Canvas.esm.js";
 import { Common, VISIBLE_SCREEN } from "./Common.esm.js";
-import { DIAMOND_SIZE } from "./Diamond.esm.js";
-import { gameLevels, GAME_BOARD_X_OFFSET, GAME_BOARD_Y_OFFSET } from "./gameLevels.esm.js";
+import { DIAMOND_SIZE, NUMBER_OF_DIAMONDS_TYPES } from "./Diamond.esm.js";
+import { gameLevels, GAME_BOARD_X_OFFSET, GAME_BOARD_Y_OFFSET, EMPTY_BLOCK } from "./gameLevels.esm.js";
 import { GameState } from "./GameState.esm.js";
 import { DATALOADED_EVENT_NAME } from "./Loading.esm.js";
 import { media } from "./Media.esm.js";
 import { mouseController } from "./MouseController.esm.js";
+import { resultScreen } from "./ResultScreen.esm.js";
+
 
 const DIAMONDS_ARRAY_WIDTH = 8;
 const DIAMONDS_ARRAY_HEIGHT = DIAMONDS_ARRAY_WIDTH + 1; //  invisible first line
+const LAST_ELEMENT_DIAMOND_ARRAY = DIAMONDS_ARRAY_WIDTH * DIAMONDS_ARRAY_HEIGHT - 1;
 const SWAPING_SPEED = 8;
+const TRANSPARENCY_SPEED = 8;
 
 
 
@@ -30,11 +34,16 @@ class Game extends Common {
     animate() {
         this.handleMouseState();
         this.handleMouseClick();
+        this.findMatches();
         this.moveDiamonds();
+        this.hideAnimation();
+        this.countScores();
         this.revertSwap();
+        this.clearMatched();
         canvas.drawGameOnCanvas(this.gameState);
         this.gameState.getGameBoard().forEach(diamond => diamond.draw());
-        this.animationFrame = window.requestAnimationFrame(() => this.animate());
+        this.checkEndGame();
+
         };
 
         handleMouseState() {
@@ -85,12 +94,43 @@ class Game extends Common {
             mouseController.clicked = false;
         }
 
+        findMatches() {
+            this.gameState.getGameBoard().forEach((diamond, index, diamonds) => {
+                if (diamond.kind === EMPTY_BLOCK || index === LAST_ELEMENT_DIAMOND_ARRAY) {
+                    return;
+                }
+
+                if (
+                    diamonds[index - 1].kind === diamond.kind
+                    && diamonds[index + 1].kind === diamond.kind
+                    ) {
+                        if (Math.floor((index - 1) / DIAMONDS_ARRAY_WIDTH) === Math.floor((index + 1) / DIAMONDS_ARRAY_WIDTH)) {
+                            for (let i = -1; i <= 1; i++) {
+                                diamonds[index + i].match++;
+                            }
+                        }
+                    }
+                    if (
+                        index >= DIAMONDS_ARRAY_WIDTH
+                        && index < LAST_ELEMENT_DIAMOND_ARRAY - DIAMONDS_ARRAY_WIDTH + 1
+                        && diamonds[index - DIAMONDS_ARRAY_WIDTH].kind === diamond.kind
+                        && diamonds[index + DIAMONDS_ARRAY_WIDTH].kind === diamond.kind
+                        ) {
+                            if ((index - DIAMONDS_ARRAY_WIDTH) % DIAMONDS_ARRAY_WIDTH === (index + DIAMONDS_ARRAY_WIDTH) % DIAMONDS_ARRAY_WIDTH) {
+                                for (let i = -DIAMONDS_ARRAY_WIDTH; i <= DIAMONDS_ARRAY_WIDTH; i+= DIAMONDS_ARRAY_WIDTH) {
+                                    diamonds[index + i].match++;
+                                }
+                            }
+                        }
+            })
+        };
+
         swapDiamonds() {
             const firstDiamond = mouseController.firstClick.y * DIAMONDS_ARRAY_WIDTH + mouseController.firstClick.x;
             const secondDiamond = mouseController.secondClick.y * DIAMONDS_ARRAY_WIDTH + mouseController.secondClick.x; 
 
             this.swap(this.gameState.getGameBoard()[firstDiamond], this.gameState.getGameBoard()[secondDiamond])
-        }
+        };
 
         moveDiamonds() {
             this.gameState.setIsMoving(false);
@@ -117,14 +157,86 @@ class Game extends Common {
             });
         }
 
+        hideAnimation() {
+            if (this.gameState.getIsMoving()) {
+                return
+            }
+
+            this.gameState.getGameBoard().forEach(diamond => {
+                if (diamond.match && diamond.alpha > 10) {
+                    diamond.alpha -= TRANSPARENCY_SPEED;
+                    this.gameState.setIsMoving(true)
+                }
+            });
+        }
+
+        countScores() {
+            this.scores = 0;
+            this.gameState.getGameBoard().forEach(diamond => this.scores += diamond.match);
+
+            if (!this.gameState.getIsMoving() && this.scores) {
+                this.gameState.increasePlayerPoints(this.scores);
+            }
+        }
+
         revertSwap() {
             if (this.gameState.getIsSwaping() && !this.gameState.getIsMoving()) {
-                // if (!this.scores) {
-                //     this.swapDiamonds();
-                //     this.gameState.increasePointsMovent();
-                // }
+                if (!this.scores) {
+                    this.swapDiamonds();
+                    this.gameState.increasePointsMovent();
+                }
                 this.gameState.setIsSwaping(false);
             }
+        }
+
+        clearMatched() {
+            if (this.gameState.getIsMoving()) {
+                return;
+            }
+            this.gameState.getGameBoard().forEach((_, idx, diamonds) => {
+                const index = diamonds.length - 1 - idx;
+                const column = Math.floor(index / DIAMONDS_ARRAY_WIDTH);
+                const row = Math.floor(index % DIAMONDS_ARRAY_WIDTH);
+
+                if (diamonds[index].match) {
+                    for (let counter = column; counter >= 0; counter--) {
+                        if (!diamonds[counter * DIAMONDS_ARRAY_WIDTH + row].match) {
+                            this.swap(diamonds[counter * DIAMONDS_ARRAY_WIDTH + row], diamonds[index]);
+                            break;
+                        }
+                    }
+                }
+            });
+            this.gameState.getGameBoard().forEach((diamond, index) => {
+                const row = Math.floor(index % DIAMONDS_ARRAY_WIDTH) * DIAMOND_SIZE;
+
+                if (index < DIAMONDS_ARRAY_WIDTH) {
+                    diamond.kind = EMPTY_BLOCK;
+                    diamond.match = 0;
+                } else if (diamond.match || diamond.kind === EMPTY_BLOCK) {
+                    diamond.kind = Math.floor(Math.random() * NUMBER_OF_DIAMONDS_TYPES);
+                    diamond.y = 0;
+                    diamond.x = row;
+                    diamond.match = 0;
+                    diamond.alpha = 255;
+                }
+            });
+        }
+
+        checkEndGame() {
+           if (!this.gameState.getLeftMovement() && !this.gameState.getIsMoving() && !this.gameState.getIsSwaping) {
+            const isPlayWinner = this.gameState.isPlayerWinner();
+
+            if (isPlayWinner && gameLevels[this.gameState.level]) {
+                console.log("Koloejny level odblokowany");
+            }
+
+            console.log("jeżeli gracz ma wiecej punktów to aktualizujemy high scores");
+            resultScreen.viewResultScreen(isPlayWinner, this.gameState.getPlayerPoints(), this.gameState.level)
+
+           } else {
+            this.animationFrame = window.requestAnimationFrame(() => this.animate());
+           }
         }
 
         swap(firstDiamond, secondDiamond) {
