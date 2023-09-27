@@ -41,11 +41,12 @@ class ResultScreen extends Common {
         this.changeVisibilityScreen(this.element, VISIBLE_SCREEN);
 		this.resultTextElement.textContent = isGameWin ? 'WYGRAŁEŚ!' : 'PRZEGRAŁEŚ!';
 		this.userPointsElement.textContent = String(playerPoints);
-		this.highScoresElement.textContent = String(userData.getHighScore(level));
+		this.highScoresElement.textContent = String(userData.getHighScores(level));
     }
     backButtonClick() {
         this.changeVisibilityScreen(canvas.element, HIDDEN_SCREEN);
         this.changeVisibilityScreen(this.element, HIDDEN_SCREEN);
+		this.changeVisibilityScreen(mainMenu.miniSettingsLayerElement, HIDDEN_SCREEN);
         mainMenu.showLevelScreen();
     }
     restartLevelClick() {
